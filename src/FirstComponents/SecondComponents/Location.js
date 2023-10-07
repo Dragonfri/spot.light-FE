@@ -2,6 +2,7 @@ import React, {useEffect, useRef, useState} from 'react'
 import {Helmet, HelmetProvider} from "react-helmet-async";
 import {LocationImage} from "./ThirdComponents/LocationImage";
 import './Location.css';
+import EXIF from "exif-js";
 
 export function Location({information = [], onUploadSubmit}) {
     const mapStyle = {
@@ -204,7 +205,7 @@ export function Location({information = [], onUploadSubmit}) {
             if(!map.current) {
                 const mapContainer = document.getElementById('map');
                 const mapOption = {
-                    center: new window.kakao.maps.LatLng(36.362530384643, 127.34486028546), // 지도의 중심좌표
+                    center: new window.kakao.maps.LatLng(36.656255785612, 126.67338143867), // 지도의 중심좌표
                     level: 3, // 지도의 확대 레벨
                 };
                 map.current = new window.kakao.maps.Map(mapContainer, mapOption);
@@ -225,12 +226,15 @@ export function Location({information = [], onUploadSubmit}) {
                 });
             }
 
+            if(markers.current.length >= 1) {
+                clusterer.current.removeMarkers(markers.current);
+            }
+
             markers.current = information.map(function (position) {  // 마커를 배열 단위로 묶음
                 return new window.kakao.maps.Marker({
                     position: new window.kakao.maps.LatLng(position.latitude, position.longitude)
                 });
             });
-
             clusterer.current.addMarkers(markers.current);
         }
 
@@ -246,12 +250,6 @@ export function Location({information = [], onUploadSubmit}) {
             height: `${gap}px`,
         };
         setEditStyle(newEditStyle);
-
-        return () => {
-            if (clusterer.current) {
-                clusterer.current.removeMarkers(markers.current);
-            }
-        };
     }, [information]);
 
     let handleSidePanelTouchStart = (event) => {
@@ -433,6 +431,18 @@ export function Location({information = [], onUploadSubmit}) {
     const handleImageChange = (event) => {
         const imageFile = event.target.files[0];
 
+        if (imageFile && imageFile.name) {
+            EXIF.getData(imageFile, function() {
+                let exifData = EXIF.pretty(this);
+                if (exifData) {
+                    alert(EXIF.getTag(this, "GPSLatitude"));
+                    alert(EXIF.getTag(this, "GPSLongitude"));
+                } else {
+                    console.log("No EXIF data found in image '" + imageFile.name + "'.");
+                }
+            });
+        }
+
         if (imageFile.type.startsWith('image/')) {
             setSelectedImage(imageFile);
             const imgUrl = URL.createObjectURL(imageFile);
@@ -509,7 +519,7 @@ export function Location({information = [], onUploadSubmit}) {
                 <div style={sentenceContainerStyle}>이런 곳은 어떠세요?</div>
                 <div style={imageContainerStyle}>
                     {information.map(v =>
-                        <LocationImage {...v} key={v.loadPath}/>
+                        <LocationImage {...v} key={v.savedPath}/>
                     )}
                 </div>
             </div>
